@@ -20,45 +20,38 @@ omopgenerics::logMessage("reading tables in write schema (initial)")
 
 initialTables <- omopgenerics::listSourceTables(cdm = cdm)
 
-# general benchmark
 omopgenerics::logMessage("general benchmark")
-result <- generalBenchmark(cdm = cdm, iterations = iterations)
-general_benchmark <- result$general_benchmark
-cdm <- result$cdm
-
-# CDMConnector benchmark
-omopgenerics::logMessage("CDMConnector benchmark")
-cdmConnector_benchmark <- cdmConnectorBenchmark(cdm = cdm, iterations = iterations)
-
-# IncidencePrevalence benchmark
-omopgenerics::logMessage("IncidencePrevalence benchmark")
-incidencePrevalence_benchmark <- incidencePrevalenceBenchmark(cdm = cdm, iterations = iterations)
-
-# CohortCharacteristics benchmark
-omopgenerics::logMessage("CohortCharacteristics benchmark")
-cohortCharacteristics_benchmark <- cohortCharacteristicsBenchmark(cdm = cdm, iterations = iterations)
-
-omopgenerics::logMessage("CohortConstructor benchmark")
-cohortConstructor_benchmark <- cohortConstructorBenchmark(cdm = cdm, iterations = iterations)
-
-omopgenerics::logMessage("DrugUtilisation benchmark")
-drugUtilisation_benchmark <- drugUtilisationBenchmark(cdm = cdm, iterations = iterations)
+general_benchmark <- generalBenchmark(cdm = cdm, iterations = iterations)
 
 omopgenerics::logMessage("OmopConstructor benchmark")
 omopConstructor_benchmark <- omopConstructorBenchmark(cdm = cdm, iterations = iterations)
 
+omopgenerics::logMessage("CodelistGenerator benchmark")
+CodelistGenerator_benchmark <- CodelistGeneratorBenchmark(cdm = cdm, iterations = iterations)
+
+omopgenerics::logMessage("CohortConstructor benchmark")
+cohortConstructor_benchmark <- cohortConstructorBenchmark(cdm = cdm, iterations = iterations)
+
+omopgenerics::logMessage("IncidencePrevalence benchmark")
+incidencePrevalence_benchmark <- incidencePrevalenceBenchmark(cdm = cdm, iterations = iterations)
+
+omopgenerics::logMessage("CohortCharacteristics benchmark")
+cohortCharacteristics_benchmark <- cohortCharacteristicsBenchmark(cdm = cdm, iterations = iterations)
+
+omopgenerics::logMessage("DrugUtilisation benchmark")
+drugUtilisation_benchmark <- drugUtilisationBenchmark(cdm = cdm, iterations = iterations)
 
 # export results
 omopgenerics::logMessage("Export results")
 
 omopgenerics::exportSummarisedResult(
   general_benchmark,
-  incidencePrevalence_benchmark,
-  cdmConnector_benchmark,
-  cohortCharacteristics_benchmark,
-  cohortConstructor_benchmark,
-  drugUtilisation_benchmark,
   omopConstructor_benchmark,
+  CodelistGenerator_benchmark,
+  cohortConstructor_benchmark,
+  incidencePrevalence_benchmark,
+  cohortCharacteristics_benchmark,
+  drugUtilisation_benchmark,
   minCellCount = minCellCount,
   path = outputFolder,
   fileName = "result_benchmark_{cdm_name}_{date}.csv"
