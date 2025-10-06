@@ -17,11 +17,12 @@ filter_data <- function(data, input){
     omopgenerics::addSettings(settingsColumn = "result_type" ) |>
     dplyr::mutate(result_type = dplyr::if_else(.data$result_type == "summarise_general_benchmark", "General benchmark", 
                                                dplyr::if_else(.data$result_type == "summarise_incidence_prevalence_benchmark", "IncidencePrevalence benchmark",
+                                                              dplyr::if_else(.data$result_type == "summarise_codelist_generator_benchmark", "CodelistGenerator benchmark",
                                                               dplyr::if_else(.data$result_type == "summarise_cdm_connector_benchmark", "CDMConnector benchmark",
                                                                              dplyr::if_else(.data$result_type =="summarise_cohort_characteristics_benchmark","CohortCharacteristics benchmark",
                                                                                             dplyr::if_else(.data$result_type =="summarise_cohort_constructor_benchmark","CohortConstructor benchmark", 
                                                                                                            dplyr::if_else(.data$result_type =="summarise_omop_constructor_benchmark","OmopConstructor benchmark",
-                                                                                                                          dplyr::if_else(.data$result_type =="summarise_drug_utilisation_benchmark","DrugUtilisation benchmark", .data$result_type)))))))) |>
+                                                                                                                          dplyr::if_else(.data$result_type =="summarise_drug_utilisation_benchmark","DrugUtilisation benchmark", .data$result_type))))))))) |>
     omopgenerics::splitAll()
     
     
@@ -90,12 +91,13 @@ server <- function(input, output, session) {
       omopgenerics::filterSettings(grepl("benchmark", .data$result_type)) |>
       omopgenerics::addSettings(settingsColumn = "result_type" ) |>
       dplyr::mutate(result_type = dplyr::if_else(.data$result_type == "summarise_general_benchmark", "General benchmark", 
+                                                 dplyr::if_else(.data$result_type == "summarise_codelist_generator_benchmark", "CodelistGenerator benchmark",
                                                  dplyr::if_else(.data$result_type == "summarise_incidence_prevalence_benchmark", "IncidencePrevalence benchmark",
                                                                 dplyr::if_else(.data$result_type == "summarise_cdm_connector_benchmark", "CDMConnector benchmark",
                                                                                dplyr::if_else(.data$result_type =="summarise_cohort_characteristics_benchmark","CohortCharacteristics benchmark",
                                                                                               dplyr::if_else(.data$result_type =="summarise_cohort_constructor_benchmark","CohortConstructor benchmark", 
                                                                                                              dplyr::if_else(.data$result_type =="summarise_omop_constructor_benchmark","OmopConstructor benchmark",
-                                                                                                                            dplyr::if_else(.data$result_type =="summarise_drug_utilisation_benchmark","DrugUtilisation benchmark", .data$result_type))))))))|> 
+                                                                                                                            dplyr::if_else(.data$result_type =="summarise_drug_utilisation_benchmark","DrugUtilisation benchmark", .data$result_type))))))))) |> 
     
     
       visOmopResults::splitAll()
