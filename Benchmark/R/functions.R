@@ -27,30 +27,97 @@ generalBenchmark <- function(cdm, iterations) {
     mes <- glue::glue("general benchmark iteration {i}/{iterations}")
     omopgenerics::logMessage(mes)
 
-    # 1) Count condition occurrence rows
+    # Benchmarks relating to vocab tables (which should be similar size for dps)
+    task_name <- "Collect concept table into memory"
+    cli::cli_inform("Running task: {task_name}")
+    tictoc::tic()
+    collected_concept <- cdm[["concept"]] |>
+      dplyr::collect()
+    t <- tictoc::toc()
+    res <- new_rows(res, task_name = task_name, time = t, iteration = i)
+
+    task_name <- "Insert concept table into database"
+    cli::cli_inform("Running task: {task_name}")
+    tmpName <- omopgenerics::uniqueTableName()
+    tictoc::tic()
+    cdm <- omopgenerics::insertTable(cdm = cdm, name = tmpName, table = collected_concept)
+    collected_concept <- cdm[["concept"]] |>
+      dplyr::collect()
+    t <- tictoc::toc()
+    res <- new_rows(res, task_name = task_name, time = t, iteration = i)
+    omopgenerics::dropSourceTable(cdm, tmpName)
+
+    task_name <- "Compute concept table to temp table"
+    cli::cli_inform("Running task: {task_name}")
+    tictoc::tic()
+    cdm[["concept"]] |>
+      dplyr::compute()
+    t <- tictoc::toc()
+    res <- new_rows(res, task_name = task_name, time = t, iteration = i)
+
+    task_name <- "Compute concept table to permanent table"
+    cli::cli_inform("Running task: {task_name}")
+    tmpName <- omopgenerics::uniqueTableName()
+    tictoc::tic()
+    cdm[[tmpName]] <- cdm[["concept"]] |>
+      dplyr::compute(temporary = FALSE, name = tmpName)
+    t <- tictoc::toc()
+    res <- new_rows(res, task_name = task_name, time = t, iteration = i)
+    omopgenerics::dropSourceTable(cdm, tmpName)
+
+    task_name <- "Count of concept relationship table"
+    cli::cli_inform("Running task: {task_name}")
+    tictoc::tic()
+    cdm[["concept_relationship"]] |>
+      dplyr::tally() |>
+      dplyr::pull("n")
+    t <- tictoc::toc()
+    res <- new_rows(res, task_name = task_name, time = t, iteration = i)
+
+    task_name <- "Count of different relationship IDs in concept relationship table"
+    cli::cli_inform("Running task: {task_name}")
+    tictoc::tic()
+    cdm[["concept_relationship"]] |>
+      dplyr::group_by(.data$relationship_id) |>
+      dplyr::tally() |>
+      dplyr::collect()
+    t <- tictoc::toc()
+    res <- new_rows(res, task_name = task_name, time = t, iteration = i)
+
+    task_name <- "Distinct count of concept relationship table"
+    cli::cli_inform("Running task: {task_name}")
+    tictoc::tic()
+    cdm[["concept_relationship"]] |>
+      dplyr::distinct() |>
+      dplyr::tally() |>
+      dplyr::pull("n")
+    t <- tictoc::toc()
+    res <- new_rows(res, task_name = task_name, time = t, iteration = i)
+
+    # Benchmarks relating to clinical records (which will be different size for dps)
+    task_name <- "Count condition occurrence rows"
+    cli::cli_inform("Running task: {task_name}")
     tictoc::tic()
     cdm$condition_occurrence |>
       dplyr::tally() |>
-      dplyr::pull("n") |>
-      suppressMessages()
+      dplyr::pull("n")
     t <- tictoc::toc()
-    task_name <- "Count condition occurrence rows"
     res <- new_rows(res, task_name = task_name, time = t, iteration = i)
 
-    # 2) Count individuals in condition occurrence table
+    task_name <- "Count individuals in condition occurrence table"
+    cli::cli_inform("Running task: {task_name}")
     tictoc::tic()
     cdm$condition_occurrence |>
       dplyr::group_by(person_id) |>
       dplyr::tally() |>
       dplyr::ungroup() |>
       dplyr::tally() |>
-      dplyr::pull("n") |>
-      suppressMessages()
+      dplyr::pull("n")
     t <- tictoc::toc()
-    task_name <- "Count individuals in condition occurrence table"
     res <- new_rows(res, task_name = task_name, time = t, iteration = i)
 
-    # 3) Count individuals in person but not in condition occurrence table
+    task_name <- "Count individuals in person but not in condition occurrence table"
+    cli::cli_inform("Running task: {task_name}")
     tictoc::tic()
     cdm$person |>
       dplyr::left_join(
@@ -62,13 +129,12 @@ generalBenchmark <- function(cdm, iterations) {
       ) |>
       dplyr::filter(is.na(n)) |>
       dplyr::tally() |>
-      dplyr::pull("n") |>
-      suppressMessages()
+      dplyr::pull("n")
     t <- tictoc::toc()
-    task_name <- "Count individuals in person but not in condition occurrence table"
     res <- new_rows(res, task_name = task_name, time = t, iteration = i)
 
-    # 4) Compute person table to write schema
+    task_name <- "Compute person table to write schema"
+    cli::cli_inform("Running task: {task_name}")
     tictoc::tic()
     cdm$person_ws <- cdm$person |>
       dplyr::compute(
@@ -78,13 +144,11 @@ generalBenchmark <- function(cdm, iterations) {
       suppressMessages()
     cdm$person_ws |>
       dplyr::tally() |>
-      dplyr::pull("n") |>
-      suppressMessages()
+      dplyr::pull("n")
     t <- tictoc::toc()
-    task_name <- "Compute person table to write schema"
     res <- new_rows(res, task_name = task_name, time = t, iteration = i)
 
-    # 5) Count individuals in person (in write schema) but not in condition occurrence table
+    task_name <- "Count individuals in person (in write schema) but not in condition occurrence table"
     tictoc::tic()
     cdm$person_ws |>
       dplyr::left_join(
@@ -99,132 +163,27 @@ generalBenchmark <- function(cdm, iterations) {
       dplyr::pull("n") |>
       suppressMessages()
     t <- tictoc::toc()
-    task_name <- "Count individuals in person (in write schema) but not in condition occurrence table"
     res <- new_rows(res, task_name = task_name, time = t, iteration = i)
 
-    # 6) Create IncidencePrevalence cohorts
-    tictoc::tic()
-    cdm <- IncidencePrevalence::generateDenominatorCohortSet(
-      cdm = cdm,
-      name = "denominator",
-      ageGroup = list(c(18, 150), c(0, 17), c(18, 64), c(65, 150)),
-      sex = c("Both", "Male", "Female"),
-      daysPriorObservation = c(365)
-    ) |> suppressMessages()
-    t <- tictoc::toc()
-    task_name <- "Create IncidencePrevalence cohorts"
-    res <- new_rows(res, task_name = task_name, time = t, iteration = i)
-
-    # 7) Create demographics cohorts
-    tictoc::tic()
-    cdm$denominator_cc <- CohortConstructor::demographicsCohort(
-      cdm = cdm,
-      name = "denominator_cc",
-      ageRange = list(c(18, 150), c(0, 17), c(18, 64), c(65, 150)),
-      sex = c("Both", "Male", "Female"),
-      minPriorObservation = c(365)
-    ) |>
-      suppressMessages()
-    t <- tictoc::toc()
-    task_name <- "Create demographics cohorts"
-    res <- new_rows(res, task_name = task_name, time = t, iteration = i)
-
-    # 8) Get ingredient codes with CodelistGenerator
-    tictoc::tic()
-    druglist <- CodelistGenerator::getDrugIngredientCodes(
-      cdm = cdm, name = NULL, nameStyle = "{concept_code}_{concept_name}") |>
-      suppressMessages()
-    t <- tictoc::toc()
-    task_name <- "Get ingredient codes with CodelistGenerator"
-    res <- new_rows(res, task_name = task_name, time = t, iteration = i)
-
-    druglist <- check_int64(druglist)
-
-    # 9) Instantiate acetaminophen and metformin cohorts
-    tictoc::tic()
-    cdm <- DrugUtilisation::generateDrugUtilisationCohortSet(
-      cdm = cdm,
-      name = "drug_cohorts",
-      conceptSet = druglist[c("161_acetaminophen", "11289_warfarin")],
-      gapEra = 30
-    ) |>
-      suppressMessages()
-    t <- tictoc::toc()
-    task_name <- "Instantiate acetaminophen and warfarin cohorts"
-    res <- new_rows(res, task_name = task_name, time = t, iteration = i)
-
-    # 10) Require 365 days of prior washout to drug_cohorts
-    tictoc::tic()
-    cdm$drug_cohorts <- cdm$drug_cohorts |>
-      DrugUtilisation::requirePriorDrugWashout(days = 365) |>
-      suppressMessages()
-    t <- tictoc::toc()
-    task_name <- "Require 365 days of prior washout to drug_cohorts"
-    res <- new_rows(res, task_name = task_name, time = t, iteration = i)
-
-    # 11) Get conditions codes with CodelistGenerator
-    tictoc::tic()
-    codes_sin <- CodelistGenerator::getCandidateCodes(cdm, c("sinusitis")) |>
-      suppressMessages() |>
-      dplyr::pull("concept_id")
-    codes_ph <- CodelistGenerator::getCandidateCodes(cdm, c("pharyngitis")) |>
-      suppressMessages() |>
-      dplyr::pull("concept_id")
-    codes_bro <- CodelistGenerator::getCandidateCodes(cdm, c("bronchitis"))|>
-      suppressMessages() |>
-      dplyr::pull("concept_id")
-    t <- tictoc::toc()
-    task_name <- "Get conditions codes with CodelistGenerator"
-    res <- new_rows(res, task_name = task_name, time = t, iteration = i)
-
-    codes <- omopgenerics::newCodelist(list("sinusitis" = codes_sin, "bronchitis" = codes_bro, "pharyngitis" = codes_ph)|>check_int64())
-
-    # 12) Create condtions cohorts with CohortConstructor
-    tictoc::tic()
-    cdm$conditions_cohort <- CohortConstructor::conceptCohort(
-      cdm = cdm,
-      conceptSet = codes,
-      name = "conditions_cohort"
-    ) |>
-      suppressMessages()
-    t <- tictoc::toc()
-    task_name <- "Create condtions cohorts with CohortConstructor"
-    res <- new_rows(res, task_name = task_name, time = t, iteration = i)
-
-    # 13) Summary cdm
+    task_name <- "Get summary of cdm"
+    cli::cli_inform("Running task: {task_name}")
     tictoc::tic()
     snap <- summary(cdm)
     t <- tictoc::toc()
-    task_name <- "Summary cdm"
     res <- new_rows(res, task_name = task_name, time = t, iteration = i)
 
     # 14) Drop tables created
+    task_name <- "Drop tables created"
+    cli::cli_inform("Running task: {task_name}")
     tictoc::tic()
     cdm <- CDMConnector::dropSourceTable(
       cdm = cdm,
-      name = dplyr::starts_with(c(
-        "conditions_cohort", "drug_cohorts", "denominator_cc", "denominator",
-        "person_ws"
+      name = dplyr::starts_with(c( "person_ws"
       ))
-    ) |> suppressMessages()
+    )
     t <- tictoc::toc()
-    task_name <- "Drop tables created"
     res <- new_rows(res, task_name = task_name, time = t, iteration = i)
 
-    # 15) Create cohort for diabetes, asthma and hypertension
-    tictoc::tic()
-    cdm <- CDMConnector::generateConceptCohortSet(
-      cdm = cdm,
-      conceptSet = list("diabetes" = CodelistGenerator::getDescendants(cdm, conceptId = 201820)$concept_id,
-                      "hypertension_disorder" = CodelistGenerator::getDescendants(cdm, conceptId = 316866)$concept_id,
-                      "asthma" = CodelistGenerator::getDescendants(cdm, conceptId = 317009)$concept_id) |>
-        check_int64(),
-      name = "my_cohort"
-      ) |>
-      suppressMessages()
-    t <- tictoc::toc()
-    task_name <- "Cohort created using codes descendant from diabetes, hypertension disorder and asthma"
-    res <- new_rows(res, task_name = task_name, time = t, iteration = i)
   }
 
   omopgenerics::logMessage("Compile results for general benchmark")
@@ -254,7 +213,7 @@ generalBenchmark <- function(cdm, iterations) {
   res <- res |>
     omopgenerics::newSummarisedResult(settings = settings)
 
-  return(list(general_benchmark = res, cdm = cdm))
+  return(res)
 }
 
 incidencePrevalenceBenchmark <- function(cdm, iterations) {
@@ -297,52 +256,6 @@ incidencePrevalenceBenchmark <- function(cdm, iterations) {
   return(res)
 }
 
-cdmConnectorBenchmark <- function(cdm, iterations) {
-
-  res <- list()
-
-  for (i in 1:iterations) {
-    mes <- glue::glue("CDMConnector benchmark iteration {i}/{iterations}")
-    omopgenerics::logMessage(mes)
-    res <- dplyr::bind_rows(res, CDMConnector::benchmarkCDMConnector(cdm) |>
-      dplyr::mutate(strata_level = as.character(i))) |>
-      suppressMessages()
-  }
-
-  omopgenerics::logMessage("Compile results for CDMConnector benchmark")
-  res <- res |>
-    tidyr::pivot_longer(
-      cols = c(time_taken_secs, time_taken_mins),
-      names_to = "estimate_name",
-      values_to = "estimate_value",
-      names_transform = list(estimate_name = ~ dplyr::case_when(
-        . == "time_taken_secs" ~ "time_seconds",
-        . == "time_taken_mins" ~ "time_minutes"
-      ))
-    ) |>
-    visOmopResults::uniteAdditional(cols = c("dbms", "person_n")) |>
-    dplyr::mutate(
-      result_id = 1L,
-      cdm_name = omopgenerics::cdmName(cdm),
-      group_name = "task",
-      strata_name = "iteration",
-      variable_name = "overall",
-      variable_level = "overall",
-      estimate_type = "numeric",
-      estimate_value = as.character(.data$estimate_value)
-    ) |>
-    dplyr::rename("group_level" = "task")
-
-  settings <- dplyr::tibble(
-    result_id = unique(res$result_id),
-    package_name = pkg_name,
-    package_version = pkg_version,
-    result_type = "summarise_cdm_connector_benchmark"
-  )
-  res <- res |>
-    omopgenerics::newSummarisedResult(settings = settings)
-  return(res)
-}
 
 cohortCharacteristicsBenchmark <- function(cdm, iterations) {
   res <- omopgenerics::emptySummarisedResult()
@@ -537,54 +450,42 @@ omopConstructorBenchmark <- function(cdm, iterations) {
   res <- tibble::tibble()
   for (i in 1:iterations) {
     mes <- glue::glue("OmopConstructor iteration {i}/{iterations}")
-
     omopgenerics::logMessage(mes)
 
+    task_name <- "OP: first record to data extraction"
+    cli::cli_inform("Running task: {task_name}")
     tictoc::tic()
-
     cdm <- OmopConstructor::buildObservationPeriod(
       cdm,
       collapseDays = Inf,
       persistenceDays = Inf
 
-    )|>
-      suppressMessages()
-
+    )
     t <- tictoc::toc()
-
-    task_name <- "OP: first record to data extraction"
-
     res <- new_rows(res, task_name = task_name, time = t, iteration = i)
 
-
+    task_name <- "OP: Inpatient"
+    cli::cli_inform("Running task: {task_name}")
     tictoc::tic()
-
     cdm <- OmopConstructor::buildObservationPeriod(
       cdm = cdm,
       collapseDays = 1,
       persistenceDays = 0,
       recordsFrom = "visit_occurrence"
-    ) |>
-      suppressMessages()
-
+    )
     t <- tictoc::toc()
-
-    task_name <- "OP: Inpatient"
-
     res <- new_rows(res, task_name = task_name, time = t, iteration = i)
 
-
+    task_name <- "OP: Collapse+Persistence 365 - Age<60"
+    cli::cli_inform("Running task: {task_name}")
     tictoc::tic()
-
     cdm <- OmopConstructor::buildObservationPeriod(
       cdm = cdm,
       collapseDays = 365,
       persistenceDays = 364,
       censorAge = 60
-    ) |>
-     suppressMessages()
+    )
     t <- tictoc::toc()
-    task_name <- "OP: Collapse+Persistence 365 - Age<60"
     res <- new_rows(res, task_name = task_name, time = t, iteration = i)
   }
 
@@ -617,3 +518,58 @@ omopConstructorBenchmark <- function(cdm, iterations) {
 
   return(res)
 }
+
+CodelistGeneratorBenchmark <- function(cdm, iterations) {
+  res <- tibble::tibble()
+  for (i in 1:iterations) {
+    mes <- glue::glue("CodelistGenerator iteration {i}/{iterations}")
+    omopgenerics::logMessage(mes)
+
+    task_name <- "Get codelist for metformin"
+    cli::cli_inform("Running task: {task_name}")
+    tictoc::tic()
+    metformin <- CodelistGenerator::getDrugIngredientCodes(
+      cdm = cdm, name = "metformin")
+    t <- tictoc::toc()
+    res <- new_rows(res, task_name = task_name, time = t, iteration = i)
+
+    task_name <- "Get codelist for every drug ingredient"
+    cli::cli_inform("Running task: {task_name}")
+    tictoc::tic()
+    druglist <- CodelistGenerator::getDrugIngredientCodes(
+      cdm = cdm, name = NULL)
+    t <- tictoc::toc()
+    res <- new_rows(res, task_name = task_name, time = t, iteration = i)
+
+  }
+
+  omopgenerics::logMessage("Compile results for CodelistGenerator benchmark")
+
+  res <- res |>
+    dplyr::mutate(
+      dbms = omopgenerics::sourceType(cdm),
+      person_n = omopgenerics::numberSubjects(cdm$person)
+    ) |>
+    dplyr::mutate(
+      result_id = 1L,
+      cdm_name = omopgenerics::cdmName(cdm),
+      group_name = "task",
+      strata_name = "iteration",
+      variable_name = "overall",
+      variable_level = "overall",
+      estimate_type = "numeric"
+    ) |>
+    visOmopResults::uniteAdditional(cols = c("dbms", "person_n"))
+
+  settings <- dplyr::tibble(
+    result_id = unique(res$result_id),
+    package_name = pkg_name,
+    package_version = pkg_version,
+    result_type = "summarise_codelist_generator_benchmark"
+  )
+  res <- res |>
+    omopgenerics::newSummarisedResult(settings = settings)
+
+  return(res)
+}
+
