@@ -264,6 +264,8 @@ cohortCharacteristicsBenchmark <- function(cdm, iterations) {
     mes <- glue::glue("CohortCharacteristics benchmark iteration {i}/{iterations}")
     omopgenerics::logMessage(mes)
 
+    cdm$my_cohort <- CohortConstructor::demographicsCohort(cdm, "my_cohort")
+
     x <- CohortCharacteristics::benchmarkCohortCharacteristics(cdm$my_cohort) |>
       suppressMessages()
     x <- x |>
@@ -272,6 +274,8 @@ cohortCharacteristicsBenchmark <- function(cdm, iterations) {
       strata_level = as.character(i),
       estimate_name = "time_seconds"
     )
+
+    omopgenerics::dropSourceTable(cdm, "my_cohort")
 
   res <- dplyr::bind_rows(res, x)
   }
