@@ -58,20 +58,53 @@ simpleTable <- function(result) {
   }
   
   
-  # format estimate column
-  formatEstimates <- c(
-    "Time (s)" = "<time_seconds>",
-    "Time (min)" = "<time_minutes>"
+  secsToString <- function(s) {
+    # Assumes s is a numeric vector, rounded, and non-missing.
     
-  )
+    h_val <- s %/% 3600
+    m_val <- (s %% 3600) %/% 60
+    s_val <- s %% 60
+    
+    # Build parts, ensuring correct singular/plural forms (returns character)
+    h_str <- dplyr::if_else(h_val > 0, stringr::str_c(h_val, dplyr::if_else(h_val == 1, " hour", " hours")), "")
+    m_str <- dplyr::if_else(m_val > 0, stringr::str_c(m_val, dplyr::if_else(m_val == 1, " minute", " minutes")), "")
+    s_str <- dplyr::if_else(s_val > 0, stringr::str_c(s_val, dplyr::if_else(s_val == 1, " second", " seconds")), "")
+    
+    # Combine parts into a single string for splitting
+    parts <- stringr::str_c(h_str, m_str, s_str, sep = "|")
+    
+    # Split the combined string
+    parts_split <- stringr::str_split(parts, "\\|")
+    
+    # Use vapply to guarantee the final output type is character (length 1 for each element)
+    vapply(seq_along(s), function(i) {
+      if (s[i] == 0) return("0 seconds")
+      
+      p_clean <- parts_split[[i]][nchar(parts_split[[i]]) > 0]
+      n <- length(p_clean)
+      
+      # Should not hit this if s[i] > 0, but acts as a safeguard
+      if (n == 0) return(as.character(s[i])) 
+      
+      if (n == 1) return(trimws(p_clean))
+      if (n == 2) return(stringr::str_c(trimws(p_clean), collapse = " and "))
+      
+      # Logic for n >= 3
+      stringr::str_c(
+        stringr::str_c(trimws(p_clean[1:(n - 1)]), collapse = ", "),
+        " and ",
+        trimws(p_clean[n])
+      )
+    }, character(1)) # CRITICAL: guarantees a character vector output
+  }
   
-  
+  result <- result |> 
+    mutate(estimate_value = secsToString(round(as.numeric(estimate_value))))|> 
+    mutate(estimate_type = "character")
   tab <- visOmopResults::visOmopTable(result = result, 
-                                      estimateName = formatEstimates,
                                       header = header, 
-                                      hide = hide, 
-                                      groupColumn = group, 
-                                      rename = c("N subjects" = "person_n"))
+                                      hide = c(hide, "estimate_name", "person_n"), 
+                                      groupColumn = group)
   
   return(tab)
 }
