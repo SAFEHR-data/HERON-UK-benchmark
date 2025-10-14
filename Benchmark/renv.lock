@@ -268,15 +268,14 @@
       ],
       "URL": "https://ohdsi.github.io/CohortConstructor/, https://github.com/OHDSI/CohortConstructor",
       "LazyData": "true",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteRepo": "CohortConstructor",
-      "RemoteUsername": "OHDSI",
-      "RemoteRef": "HEAD",
-      "RemoteSha": "7b3f9e59ba8be6ac3a3e707ee5e058380acad263",
-      "NeedsCompilation": "no",
       "Author": "Edward Burn [aut, cre] (ORCID: <https://orcid.org/0000-0002-9286-1128>), Martí Català [aut] (ORCID: <https://orcid.org/0000-0003-3308-9905>), Nuria Mercade-Besora [aut] (ORCID: <https://orcid.org/0009-0006-7948-3747>), Marta Alcalde-Herraiz [aut] (ORCID: <https://orcid.org/0009-0002-4405-1814>), Mike Du [aut] (ORCID: <https://orcid.org/0000-0002-9517-8834>), Yuchen Guo [aut] (ORCID: <https://orcid.org/0000-0002-0847-4855>), Xihang Chen [aut] (ORCID: <https://orcid.org/0009-0001-8112-8959>), Kim Lopez-Guell [aut] (ORCID: <https://orcid.org/0000-0002-8462-8668>), Elin Rowlands [aut] (ORCID: <https://orcid.org/0009-0005-5166-0417>)",
-      "Maintainer": "Edward Burn <edward.burn@ndorms.ox.ac.uk>"
+      "Maintainer": "Edward Burn <edward.burn@ndorms.ox.ac.uk>",
+      "RemoteType": "github",
+      "RemoteUsername": "OHDSI",
+      "RemoteRepo": "CohortConstructor",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "a370045b8694f003b10145cb047773654f8b08b4",
+      "RemoteHost": "api.github.com"
     },
     "DBI": {
       "Package": "DBI",
