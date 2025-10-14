@@ -32,6 +32,7 @@ generalBenchmark <- function(cdm, iterations) {
     cli::cli_inform("Running task: {task_name}")
     tictoc::tic()
     collected_concept <- cdm[["concept"]] |>
+      dplyr::select("concept_id", "domain_id", "vocabulary_id") |> # to avoid problems with non utf8
       dplyr::collect()
     t <- tictoc::toc()
     res <- new_rows(res, task_name = task_name, time = t, iteration = i)
@@ -202,7 +203,7 @@ generalBenchmark <- function(cdm, iterations) {
       variable_level = "overall",
       estimate_type = "numeric"
     ) |>
-    visOmopResults::uniteAdditional(cols = c("dbms", "person_n"))
+    omopgenerics::uniteAdditional(cols = c("dbms", "person_n"))
 
   settings <- dplyr::tibble(
     result_id = unique(res$result_id),
@@ -379,8 +380,8 @@ cohortConstructorBenchmark <- function(cdm, iterations) {
       names_to = "estimate_name",
       values_to = "estimate_value"
       ) |>
-    visOmopResults::uniteAdditional(cols = c("dbms", "person_n")) |>
-    visOmopResults::uniteStrata(cols = "iteration") |>
+    omopgenerics::uniteAdditional(cols = c("dbms", "person_n")) |>
+    omopgenerics::uniteStrata(cols = "iteration") |>
     dplyr::rename("group_level" = "cohort_name") |>
     dplyr::mutate(
       result_id = 1L,
@@ -431,8 +432,8 @@ drugUtilisationBenchmark <- function(cdm, iterations) {
       names_to = "estimate_name",
       values_to = "estimate_value"
     ) |>
-    visOmopResults::splitAdditional() |>
-    visOmopResults::uniteAdditional(cols = c("dbms", "person_n")) |>
+    omopgenerics::splitAdditional() |>
+    omopgenerics::uniteAdditional(cols = c("dbms", "person_n")) |>
     dplyr::mutate(
       estimate_type = "numeric",
       estimate_value = sprintf("%.2f", .data$estimate_value))
@@ -509,7 +510,7 @@ omopConstructorBenchmark <- function(cdm, iterations) {
       variable_level = "overall",
       estimate_type = "numeric"
     ) |>
-    visOmopResults::uniteAdditional(cols = c("dbms", "person_n"))
+    omopgenerics::uniteAdditional(cols = c("dbms", "person_n"))
 
   settings <- dplyr::tibble(
     result_id = unique(res$result_id),
@@ -529,11 +530,11 @@ CodelistGeneratorBenchmark <- function(cdm, iterations) {
     mes <- glue::glue("CodelistGenerator iteration {i}/{iterations}")
     omopgenerics::logMessage(mes)
 
-    task_name <- "Get codelist for metformin"
+    task_name <- "Get codelist for warfarin"
     cli::cli_inform("Running task: {task_name}")
     tictoc::tic()
-    metformin <- CodelistGenerator::getDrugIngredientCodes(
-      cdm = cdm, name = "metformin")
+    warfarin <- CodelistGenerator::getDrugIngredientCodes(
+      cdm = cdm, name = "warfarin")
     t <- tictoc::toc()
     res <- new_rows(res, task_name = task_name, time = t, iteration = i)
 
@@ -563,7 +564,7 @@ CodelistGeneratorBenchmark <- function(cdm, iterations) {
       variable_level = "overall",
       estimate_type = "numeric"
     ) |>
-    visOmopResults::uniteAdditional(cols = c("dbms", "person_n"))
+    omopgenerics::uniteAdditional(cols = c("dbms", "person_n"))
 
   settings <- dplyr::tibble(
     result_id = unique(res$result_id),
