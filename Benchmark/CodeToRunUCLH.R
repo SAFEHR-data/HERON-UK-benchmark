@@ -1,6 +1,9 @@
 # to restore renv environment
 renv::restore()
 
+#install RPostgres for UCLH
+#renv::install("RPostgres")
+
 # omop_reservoir version
 # beware dbName identifies outputs, dbname is UCLH db
 dbName <- "UCLH-from-2019"
@@ -38,10 +41,30 @@ cdm <- CDMConnector::cdmFromCon(
   cdmSchema = cdmSchema,
   writeSchema =  writeSchema,
   writePrefix = prefix,
-  cdmName = dbName#,
-  #.softValidation = TRUE
+  cdmName = dbName,
+  .softValidation = TRUE
 )
 
+#without soft validation get
+# Error in `validateCdmReference()`:
+#   ! There is overlap between observation_periods, 1224607 overlaps detected for person ID 1, 3, 6, 7, and 10
+
+# fix observation_period that got messed up in latest extract
+op2 <- cdm$visit_occurrence |>
+  group_by(person_id) |>
+  summarise(minvis = min(coalesce(date(visit_start_datetime), visit_start_date), na.rm=TRUE),
+            maxvis = max(coalesce(date(visit_end_datetime), visit_end_date), na.rm=TRUE)) |>
+  left_join(select(cdm$death,person_id,death_date), by=join_by(person_id)) |>
+  #set maxvisit to death_date if before
+  #mutate(maxvis=min(maxvis, death_date, na.rm=TRUE))
+  mutate(maxvis = if_else(!is.na(death_date) & maxvis > death_date, death_date, maxvis))
+
+cdm$observation_period <- cdm$observation_period |>
+  left_join(op2, by=join_by(person_id)) |>
+  select(-observation_period_start_date) |>
+  select(-observation_period_end_date) |>
+  rename(observation_period_start_date=minvis,
+         observation_period_end_date=maxvis)
 
 # run study code
 source("R/RunBenchmark.R")
