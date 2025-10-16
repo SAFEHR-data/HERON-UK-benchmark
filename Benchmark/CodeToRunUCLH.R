@@ -30,7 +30,10 @@ DBI::dbListObjects(con, DBI::Id(schema = cdmSchema))
 DBI::dbListObjects(con, DBI::Id(schema = writeSchema))
 
 # created tables will start with this prefix
-prefix <- "heron_benchmark"
+prefix <- "heron_bench"
+
+#to drop tables, beware if no prefix also everything()
+#cdm <- CDMConnector::dropSourceTable(cdm = cdm, name = dplyr::starts_with("hdruk"))
 
 # minimum cell counts used for suppression
 minCellCount <- 5
@@ -50,6 +53,7 @@ cdm <- CDMConnector::cdmFromCon(
 #   ! There is overlap between observation_periods, 1224607 overlaps detected for person ID 1, 3, 6, 7, and 10
 
 # fix observation_period that got messed up in latest extract
+library(dplyr)
 op2 <- cdm$visit_occurrence |>
   group_by(person_id) |>
   summarise(minvis = min(coalesce(date(visit_start_datetime), visit_start_date), na.rm=TRUE),
@@ -65,6 +69,10 @@ cdm$observation_period <- cdm$observation_period |>
   select(-observation_period_end_date) |>
   rename(observation_period_start_date=minvis,
          observation_period_end_date=maxvis)
+
+# but gives 1752 records where observation period starts before it ends
+# due to a death date coming before min visit
+wrong_obs <- cdm$observation_period |> filter(observation_period_start_date > observation_period_end_date) |> collect()
 
 # run study code
 source("R/RunBenchmark.R")
